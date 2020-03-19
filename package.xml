@@ -67,6 +67,7 @@
   <depend>tf2_ros</depend>
   <depend>nav_core</depend>
   <depend>costmap_2d</depend>
+  <depend>dynamic_reconfigure</depend>
 
   <export>
     <nav_core plugin="${prefix}/cs_planner_plugin.xml" />

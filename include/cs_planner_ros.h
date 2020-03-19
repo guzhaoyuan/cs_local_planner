@@ -6,13 +6,15 @@
 #define SRC_CS_LOCAL_PLANNER_INCLUDE_CS_PLANNER_ROS_H_
 
 #include <nav_core/base_local_planner.h>
+#include <nav_msgs/Path.h>
 #include <base_local_planner/local_planner_util.h>
 #include <base_local_planner/latched_stop_rotate_controller.h>
 #include <base_local_planner/odometry_helper_ros.h>
 
 #include <tf2_ros/buffer.h>
 
-#include <nav_msgs/Path.h>
+#include <dynamic_reconfigure/server.h>
+#include <cs_local_planner/CSPlannerConfig.h>
 
 namespace cs_local_planner {
 
@@ -29,9 +31,13 @@ class CSPlannerROS : public nav_core::BaseLocalPlanner {
 
  private:
   // Callback to update the local planner's parameters based on dynamic reconfigure.
-  void reconfigureCB(DWAPlannerConfig &config, uint32_t level);
+  void reconfigureCB(CSPlannerConfig &config, uint32_t level);
 
   bool initialized_;
+
+  bool setup_;
+  dynamic_reconfigure::Server<cs_local_planner::CSPlannerConfig>* server_ptr;
+  cs_local_planner::CSPlannerConfig default_config_;
 
   ros::Publisher global_path_pub_;
   ros::Publisher local_path_pub_;

@@ -18,6 +18,7 @@ find_package(catkin REQUIRED COMPONENTS
   nav_core
   costmap_2d
   base_local_planner
+  dynamic_reconfigure
 )
 
 ## System dependencies are found with CMake's conventions
@@ -27,21 +28,9 @@ find_package(catkin REQUIRED COMPONENTS
 ## Declare ROS dynamic reconfigure parameters ##
 ################################################
 
-## To declare and build dynamic reconfigure parameters within this
-## package, follow these steps:
-## * In the file package.xml:
-##   * add a build_depend and a exec_depend tag for "dynamic_reconfigure"
-## * In this file (CMakeLists.txt):
-##   * add "dynamic_reconfigure" to
-##     find_package(catkin REQUIRED COMPONENTS ...)
-##   * uncomment the "generate_dynamic_reconfigure_options" section below
-##     and list every .cfg file to be processed
-
-## Generate dynamic reconfigure parameters in the 'cfg' folder
-# generate_dynamic_reconfigure_options(
-#   cfg/DynReconf1.cfg
-#   cfg/DynReconf2.cfg
-# )
+generate_dynamic_reconfigure_options(
+  cfg/CSPlanner.cfg
+)
 
 ###################################
 ## catkin specific configuration ##
@@ -72,8 +61,12 @@ include_directories(
 )
 
 add_library(cs_local_planner src/cs_planner_ros.cpp)
-add_dependencies(cs_local_planner ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
+add_dependencies(cs_local_planner ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS} ${PROJECT_NAME}_gencfg)
 target_link_libraries(cs_local_planner ${catkin_LIBRARIES})
+
+#############
+## Install ##
+#############
 
 install(TARGETS cs_local_planner
         ARCHIVE DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}

@@ -12,13 +12,13 @@ PLUGINLIB_EXPORT_CLASS(cs_local_planner::CSPlannerROS, nav_core::BaseLocalPlanne
 
 namespace cs_local_planner {
 
-CSPlannerROS::CSPlannerROS() : initialized_(false), odom_helper_("odom") {
+CSPlannerROS::CSPlannerROS() : initialized_(false), odom_helper_("odom"), setup_(false) {
 }
 
 CSPlannerROS::~CSPlannerROS() {
 }
 
-void DWAPlannerROS::reconfigureCB(DWAPlannerConfig &config, uint32_t level) {
+void CSPlannerROS::reconfigureCB(CSPlannerConfig &config, uint32_t level) {
   if (setup_ && config.restore_defaults) {
     config = default_config_;
     config.restore_defaults = false;
@@ -28,8 +28,9 @@ void DWAPlannerROS::reconfigureCB(DWAPlannerConfig &config, uint32_t level) {
     setup_ = true;
   }
 
-  // update generic local planner params
+  // Update generic local planner params.
   base_local_planner::LocalPlannerLimits limits;
+
   limits.max_vel_trans = config.max_vel_trans;
   limits.min_vel_trans = config.min_vel_trans;
   limits.max_vel_x = config.max_vel_x;
@@ -47,10 +48,9 @@ void DWAPlannerROS::reconfigureCB(DWAPlannerConfig &config, uint32_t level) {
   limits.prune_plan = config.prune_plan;
   limits.trans_stopped_vel = config.trans_stopped_vel;
   limits.theta_stopped_vel = config.theta_stopped_vel;
+
   planner_util_.reconfigureCB(limits, config.restore_defaults);
 
-  // update dwa specific configuration
-  dp_->reconfigure(config);
 }
 
 bool CSPlannerROS::computeVelocityCommands(geometry_msgs::Twist& cmd_vel) {
@@ -121,11 +121,15 @@ void CSPlannerROS::initialize(std::string name, tf2_ros::Buffer* tf, costmap_2d:
 
     odom_helper_.setOdomTopic( "/odom" );
 
+    server_ptr = new dynamic_reconfigure::Server<CSPlannerConfig>(private_nh);
+    dynamic_reconfigure::Server<CSPlannerConfig>::CallbackType cb = boost::bind(&CSPlannerROS::reconfigureCB, this,
+        _1, _2);
+    server_ptr->setCallback(cb);
+
     initialized_ = true;
   } else {
     ROS_WARN("This planner has already been initialized, doing nothing.");
   }
-
 }
 
 bool CSPlannerROS::isGoalReached() {
