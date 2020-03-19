@@ -1,0 +1,8 @@
+<library path="lib/libcs_local_planner">
+    <class name="cs_local_planner/CSPlannerROS" type="cs_local_planner::CSPlannerROS"
+           base_class_type="nav_core::BaseLocalPlanner">
+        <description>
+            This is a self-implemented local planner.
+        </description>
+    </class>
+</library>

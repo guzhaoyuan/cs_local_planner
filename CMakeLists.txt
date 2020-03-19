@@ -11,7 +11,11 @@ find_package(catkin REQUIRED COMPONENTS
   roscpp
   rospy
   std_msgs
-  tf
+  pluginlib
+  tf2
+  tf2_geometry_msgs
+  tf2_ros
+  nav_core
 )
 
 ## System dependencies are found with CMake's conventions
@@ -65,3 +69,18 @@ include_directories(
 add_library(cs_local_planner src/cs_planner_ros.cpp)
 add_dependencies(cs_local_planner ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
 target_link_libraries(cs_local_planner ${catkin_LIBRARIES})
+
+install(TARGETS cs_local_planner
+        ARCHIVE DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
+        LIBRARY DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
+        RUNTIME DESTINATION ${CATKIN_GLOBAL_BIN_DESTINATION}
+        )
+
+install(FILES cs_planner_plugin.xml
+        DESTINATION ${CATKIN_PACKAGE_SHARE_DESTINATION}
+        )
+
+install(DIRECTORY include/${PROJECT_NAME}/
+        DESTINATION ${CATKIN_PACKAGE_INCLUDE_DESTINATION}
+        PATTERN ".svn" EXCLUDE
+        )
