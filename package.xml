@@ -66,6 +66,7 @@
   <depend>tf2_geometry_msgs</depend>
   <depend>tf2_ros</depend>
   <depend>nav_core</depend>
+  <depend>costmap_2d</depend>
 
   <export>
     <nav_core plugin="${prefix}/cs_planner_plugin.xml" />

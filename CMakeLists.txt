@@ -16,6 +16,7 @@ find_package(catkin REQUIRED COMPONENTS
   tf2_geometry_msgs
   tf2_ros
   nav_core
+  costmap_2d
 )
 
 ## System dependencies are found with CMake's conventions
@@ -53,7 +54,10 @@ find_package(catkin REQUIRED COMPONENTS
 catkin_package(
   INCLUDE_DIRS include
   LIBRARIES cs_local_planner
-  CATKIN_DEPENDS base_local_planner
+  CATKIN_DEPENDS
+        base_local_planner
+        tf2
+        tf2_ros
 #  DEPENDS system_lib
 )
 

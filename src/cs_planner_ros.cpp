@@ -10,6 +10,13 @@ PLUGINLIB_EXPORT_CLASS(cs_local_planner::CSPlannerROS, nav_core::BaseLocalPlanne
 
 namespace cs_local_planner {
 
+CSPlannerROS::CSPlannerROS() {
+
+}
+
+CSPlannerROS::~CSPlannerROS() {
+}
+
 bool CSPlannerROS::computeVelocityCommands(geometry_msgs::Twist& cmd_vel) {
   return true;
 }
