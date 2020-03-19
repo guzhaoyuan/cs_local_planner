@@ -17,6 +17,7 @@ find_package(catkin REQUIRED COMPONENTS
   tf2_ros
   nav_core
   costmap_2d
+  base_local_planner
 )
 
 ## System dependencies are found with CMake's conventions
