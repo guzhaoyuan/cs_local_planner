@@ -78,7 +78,7 @@ bool CSPlannerROS::computeVelocityCommands(geometry_msgs::Twist& cmd_vel) {
   ROS_DEBUG_NAMED("cs_local_planner", "Received a transformed plan with %zu points.", transformed_plan.size());
 
   if (latchedStopRotateController_.isPositionReached(&planner_util_, current_pose_)) {
-    ROS_INFO("Position reached.");
+    ROS_DEBUG("Position reached.");
     // Publish an empty plan because we've reached our goal position.
     std::vector<geometry_msgs::PoseStamped> local_plan;
     std::vector<geometry_msgs::PoseStamped> transformed_plan;
@@ -87,16 +87,16 @@ bool CSPlannerROS::computeVelocityCommands(geometry_msgs::Twist& cmd_vel) {
 
     base_local_planner::LocalPlannerLimits limits = planner_util_.getCurrentLimits();
 
-    cmd_vel.angular.z = 0;
-    return true;
-//    return latchedStopRotateController_.computeVelocityCommandsStopRotate(
-//        cmd_vel,
-//        limits.getAccLimits(),
-//        cp_->getSimPeriod(),
-//        &planner_util_,
-//        odom_helper_,
-//        current_pose_,
-//        boost::bind(&CSPlanner::checkTrajectory, cp_, _1, _2, _3));
+//    cmd_vel.angular.z = 0;
+//    return true;
+    return latchedStopRotateController_.computeVelocityCommandsStopRotate(
+        cmd_vel,
+        limits.getAccLimits(),
+        cp_->getSimPeriod(),
+        &planner_util_,
+        odom_helper_,
+        current_pose_,
+        boost::bind(&CSPlanner::checkTrajectory, cp_, _1, _2, _3));
   } else {
     // We assume the global goal is the last point in the global plan.
     geometry_msgs::PoseStamped goal_pose;
@@ -104,9 +104,11 @@ bool CSPlannerROS::computeVelocityCommands(geometry_msgs::Twist& cmd_vel) {
       ROS_ERROR("Could not get goal pose");
       return false;
     }
-    double goal_th = tf2::getYaw(goal_pose.pose.orientation);
-    double angle = base_local_planner::getGoalOrientationAngleDifference(current_pose_, goal_th);
-    ROS_INFO("Angle to goal: %.2f.", angle);
+    double curr_heading_to_goal_pos_W = std::atan2(goal_pose.pose.position.y - current_pose_.pose.position.y,
+                                                 goal_pose.pose.position.x - current_pose_.pose.position.x);
+    double curr_heading_to_goal_pos_O = base_local_planner::getGoalOrientationAngleDifference(current_pose_,
+                                                                                              curr_heading_to_goal_pos_W);
+    ROS_DEBUG("Angle to goal: %.2f.", curr_heading_to_goal_pos_O);
 
     geometry_msgs::PoseStamped robot_vel;
     odom_helper_.getRobotVel(robot_vel);
@@ -117,8 +119,8 @@ bool CSPlannerROS::computeVelocityCommands(geometry_msgs::Twist& cmd_vel) {
       base_local_planner::publishPlan(transformed_plan, global_path_pub_);
       base_local_planner::publishPlan(local_plan, local_path_pub_);
 
-      if (std::abs(angle) > 0.1) {
-        cmd_vel.angular.z = angle > 0 ? 0.3 : -0.3;
+      if (std::abs(curr_heading_to_goal_pos_O) > 0.1) {
+        cmd_vel.angular.z = curr_heading_to_goal_pos_O > 0 ? 0.3 : -0.3;
         return true;
       }
     }
@@ -126,7 +128,7 @@ bool CSPlannerROS::computeVelocityCommands(geometry_msgs::Twist& cmd_vel) {
     base_local_planner::publishPlan(transformed_plan, global_path_pub_);
 
     cmd_vel.linear.x = 0.5;
-    cmd_vel.angular.z = std::abs(angle) < 0.1 ? 0 : 10 * angle;
+    cmd_vel.angular.z = std::abs(curr_heading_to_goal_pos_O) < 0.1 ? 0 : curr_heading_to_goal_pos_O;
   }
 
   return true;

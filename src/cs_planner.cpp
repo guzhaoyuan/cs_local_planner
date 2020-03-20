@@ -15,4 +15,9 @@ void CSPlanner::reconfigure(CSPlannerConfig &config) {
 
 }
 
+bool CSPlanner::checkTrajectory(Eigen::Vector3f pos, Eigen::Vector3f vel, Eigen::Vector3f vel_samples) {
+  return true;
+}
+
+
 } // namespace cs_local_planner

@@ -20,6 +20,7 @@ class CSPlanner {
 
   double getSimPeriod() {return sim_period_;}
   void reconfigure(CSPlannerConfig &config);
+  bool checkTrajectory(Eigen::Vector3f pos, Eigen::Vector3f vel, Eigen::Vector3f vel_samples);
 
  private:
   std::string name_;
