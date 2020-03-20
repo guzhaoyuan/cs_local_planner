@@ -14,6 +14,9 @@ When it reach the goal, it stop and perform a in-place-rotation again to align w
 ## TODO
 
 - [x] Track global path instead of global goal.
+- [ ] Add joy stick control feature.
+- [ ] Add speed and acceleration limits.
+- [ ] Solve the turning jiggering motion.
 - [ ] Making sure the global path tracking is able to make steep turns.
 - [ ] Consider a global path planner using RRT as well as hand-specified waypoints.
 - [ ] Add example usage.
