@@ -128,7 +128,9 @@ bool CSPlannerROS::computeVelocityCommands(geometry_msgs::Twist& cmd_vel) {
     base_local_planner::publishPlan(transformed_plan, global_path_pub_);
 
     cmd_vel.linear.x = 0.5;
-    cmd_vel.angular.z = std::abs(curr_heading_to_goal_pos_O) < 0.1 ? 0 : curr_heading_to_goal_pos_O;
+    // P control on heading direction, with dead zone.
+    const double kp = 1;
+    cmd_vel.angular.z = std::abs(curr_heading_to_goal_pos_O) < 0.1 ? 0 : kp * curr_heading_to_goal_pos_O;
   }
 
   return true;
