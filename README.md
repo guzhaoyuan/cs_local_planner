@@ -13,7 +13,7 @@ When it reach the goal, it stop and perform a in-place-rotation again to align w
 
 ## TODO
 
-- [ ] Track global path instead of global goal.
+- [x] Track global path instead of global goal.
 - [ ] Making sure the global path tracking is able to make steep turns.
 - [ ] Consider a global path planner using RRT as well as hand-specified waypoints.
 - [ ] Add example usage.

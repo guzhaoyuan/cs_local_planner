@@ -104,8 +104,25 @@ bool CSPlannerROS::computeVelocityCommands(geometry_msgs::Twist& cmd_vel) {
       ROS_ERROR("Could not get goal pose");
       return false;
     }
-    double curr_heading_to_goal_pos_W = std::atan2(goal_pose.pose.position.y - current_pose_.pose.position.y,
-                                                 goal_pose.pose.position.x - current_pose_.pose.position.x);
+
+    geometry_msgs::PoseStamped moving_target;
+
+    if (base_local_planner::getGoalPositionDistance(current_pose_, goal_pose.pose.position.x, goal_pose.pose.position.y) < 0.5) {
+      target_ID = transformed_plan.size()-1;
+      moving_target = goal_pose;
+    }
+    while (target_ID < transformed_plan.size()-1) {
+        moving_target = transformed_plan.at(target_ID);
+        double distance = base_local_planner::getGoalPositionDistance(current_pose_, moving_target.pose.position.x, moving_target.pose.position.y);
+        ROS_INFO("Distance to moving target: %.2f.", distance);
+        if (distance > 0.2)
+            break;
+        target_ID ++;
+    }
+    pose_pub_.publish(moving_target);
+
+    double curr_heading_to_goal_pos_W = std::atan2(moving_target.pose.position.y - current_pose_.pose.position.y,
+                                                   moving_target.pose.position.x - current_pose_.pose.position.x);
     double curr_heading_to_goal_pos_O = base_local_planner::getGoalOrientationAngleDifference(current_pose_,
                                                                                               curr_heading_to_goal_pos_W);
     ROS_DEBUG("Angle to goal: %.2f.", curr_heading_to_goal_pos_O);
@@ -141,6 +158,7 @@ void CSPlannerROS::initialize(std::string name, tf2_ros::Buffer* tf, costmap_2d:
     ros::NodeHandle private_nh("~/" + name);
     global_path_pub_ = private_nh.advertise<nav_msgs::Path>("global_plan", 1);
     local_path_pub_ = private_nh.advertise<nav_msgs::Path>("local_plan", 1);
+    pose_pub_ = private_nh.advertise<geometry_msgs::PoseStamped>("tracking_pose", 1);
 
     tf_ = tf;
     costmap_ros_ = costmap_ros;
@@ -190,6 +208,7 @@ bool CSPlannerROS::setPlan(const std::vector< geometry_msgs::PoseStamped > &plan
     global_path.poses = plan;
     global_path_pub_.publish(global_path);
     planner_util_.setPlan(plan);
+    target_ID = std::min(10, (int)plan.size()-1);
     return true;
   } else {
     ROS_ERROR("Got empty plan.");

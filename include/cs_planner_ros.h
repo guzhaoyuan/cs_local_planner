@@ -42,6 +42,7 @@ class CSPlannerROS : public nav_core::BaseLocalPlanner {
 
   ros::Publisher global_path_pub_;
   ros::Publisher local_path_pub_;
+  ros::Publisher pose_pub_;
 
   base_local_planner::LocalPlannerUtil planner_util_;
 
@@ -53,6 +54,7 @@ class CSPlannerROS : public nav_core::BaseLocalPlanner {
 
   CSPlanner* cp_;
 
+  int target_ID = 10;
 };
 
 } // namespace cs_local_planner
