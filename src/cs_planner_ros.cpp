@@ -7,6 +7,8 @@
 #include <pluginlib/class_list_macros.h>
 #include <base_local_planner/goal_functions.h>
 
+#include <tf2/utils.h>
+
 //register this planner as a BaseLocalPlanner plugin
 PLUGINLIB_EXPORT_CLASS(cs_local_planner::CSPlannerROS, nav_core::BaseLocalPlanner)
 
@@ -51,6 +53,8 @@ void CSPlannerROS::reconfigureCB(CSPlannerConfig &config, uint32_t level) {
 
   planner_util_.reconfigureCB(limits, config.restore_defaults);
 
+  // update dwa specific configuration
+  cp_->reconfigure(config);
 }
 
 bool CSPlannerROS::computeVelocityCommands(geometry_msgs::Twist& cmd_vel) {
@@ -75,33 +79,54 @@ bool CSPlannerROS::computeVelocityCommands(geometry_msgs::Twist& cmd_vel) {
 
   if (latchedStopRotateController_.isPositionReached(&planner_util_, current_pose_)) {
     ROS_INFO("Position reached.");
-    //publish an empty plan because we've reached our goal position
-//    std::vector<geometry_msgs::PoseStamped> local_plan;
-//    std::vector<geometry_msgs::PoseStamped> transformed_plan;
-//    publishGlobalPlan(transformed_plan);
-//    publishLocalPlan(local_plan);
-//    base_local_planner::LocalPlannerLimits limits = planner_util_.getCurrentLimits();
+    // Publish an empty plan because we've reached our goal position.
+    std::vector<geometry_msgs::PoseStamped> local_plan;
+    std::vector<geometry_msgs::PoseStamped> transformed_plan;
+    base_local_planner::publishPlan(transformed_plan, global_path_pub_);
+    base_local_planner::publishPlan(local_plan, local_path_pub_);
+
+    base_local_planner::LocalPlannerLimits limits = planner_util_.getCurrentLimits();
+
+    cmd_vel.angular.z = 0;
+    return true;
 //    return latchedStopRotateController_.computeVelocityCommandsStopRotate(
 //        cmd_vel,
 //        limits.getAccLimits(),
-//        dp_->getSimPeriod(),
+//        cp_->getSimPeriod(),
 //        &planner_util_,
 //        odom_helper_,
 //        current_pose_,
-//        boost::bind(&DWAPlanner::checkTrajectory, dp_, _1, _2, _3));
-    cmd_vel.linear.x = 0;
+//        boost::bind(&CSPlanner::checkTrajectory, cp_, _1, _2, _3));
   } else {
-//    bool isOk = dwaComputeVelocityCommands(current_pose_, cmd_vel);
-//    if (isOk) {
+    // We assume the global goal is the last point in the global plan.
+    geometry_msgs::PoseStamped goal_pose;
+    if ( ! planner_util_.getGoal(goal_pose)) {
+      ROS_ERROR("Could not get goal pose");
+      return false;
+    }
+    double goal_th = tf2::getYaw(goal_pose.pose.orientation);
+    double angle = base_local_planner::getGoalOrientationAngleDifference(current_pose_, goal_th);
+    ROS_INFO("Angle to goal: %.2f.", angle);
+
+    geometry_msgs::PoseStamped robot_vel;
+    odom_helper_.getRobotVel(robot_vel);
+    // If the robot is stationary, try rotate towards goal first.
+    if (std::sqrt(pow(robot_vel.pose.position.x,2)+pow(robot_vel.pose.position.y,2)) < 0.1) {
+      std::vector<geometry_msgs::PoseStamped> local_plan;
+      std::vector<geometry_msgs::PoseStamped> transformed_plan;
+      base_local_planner::publishPlan(transformed_plan, global_path_pub_);
+      base_local_planner::publishPlan(local_plan, local_path_pub_);
+
+      if (std::abs(angle) > 0.1) {
+        cmd_vel.angular.z = angle > 0 ? 0.3 : -0.3;
+        return true;
+      }
+    }
+
     base_local_planner::publishPlan(transformed_plan, global_path_pub_);
 
-//    } else {
-//      ROS_WARN_NAMED("dwa_local_planner", "DWA planner failed to produce path.");
-//      std::vector<geometry_msgs::PoseStamped> empty_plan;
-//      publishGlobalPlan(empty_plan);
-//    }
-//    return isOk;
-    cmd_vel.linear.x = 0.1;
+    cmd_vel.linear.x = 0.5;
+    cmd_vel.angular.z = std::abs(angle) < 0.1 ? 0 : 10 * angle;
   }
 
   return true;
@@ -126,6 +151,8 @@ void CSPlannerROS::initialize(std::string name, tf2_ros::Buffer* tf, costmap_2d:
         _1, _2);
     server_ptr->setCallback(cb);
 
+    cp_ = new CSPlanner(name, &planner_util_);
+
     initialized_ = true;
   } else {
     ROS_WARN("This planner has already been initialized, doing nothing.");
@@ -140,12 +167,7 @@ bool CSPlannerROS::isGoalReached() {
     return false;
   }
 
-  ROS_INFO("Current pose, x: %.2f, y: %.2f.", current_pose_.pose.position.x, current_pose_.pose.position.y);
-  geometry_msgs::PoseStamped goal;
-  planner_util_.getGoal(goal);
-  ROS_INFO("Goal, x: %.2f, y: %.2f.", goal.pose.position.x, goal.pose.position.y);
-
-  if(latchedStopRotateController_.isGoalReached(&planner_util_, odom_helper_, current_pose_)) {
+  if (latchedStopRotateController_.isGoalReached(&planner_util_, odom_helper_, current_pose_)) {
     ROS_INFO("Goal reached");
     return true;
   }

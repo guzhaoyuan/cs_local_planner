@@ -60,7 +60,7 @@ include_directories(
   ${catkin_INCLUDE_DIRS}
 )
 
-add_library(cs_local_planner src/cs_planner_ros.cpp)
+add_library(cs_local_planner src/cs_planner_ros.cpp src/cs_planner.cpp)
 add_dependencies(cs_local_planner ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS} ${PROJECT_NAME}_gencfg)
 target_link_libraries(cs_local_planner ${catkin_LIBRARIES})
 
