@@ -14,7 +14,7 @@ When it reach the goal, it stop and perform a in-place-rotation again to align w
 
 ## TODO
 
-- [ ] Solve the overshooting and using forward looking to get best tracking performance.
+- [x] Solve the overshooting and using forward looking to get best tracking performance.
 - [x] Track global path instead of global goal.
 - [ ] Add joy stick control feature.
 - [ ] Add speed and acceleration limits.

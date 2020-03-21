@@ -65,6 +65,15 @@ bool CSPlannerROS::computeVelocityCommands(geometry_msgs::Twist& cmd_vel) {
     ROS_ERROR("Could not get robot pose");
     return false;
   }
+  Eigen::Matrix4d curr_trans_WO = Eigen::Matrix4d::Identity();
+  curr_trans_WO.topLeftCorner<3,3>() = Eigen::Quaterniond(current_pose_.pose.orientation.w,
+                                                       current_pose_.pose.orientation.x,
+                                                       current_pose_.pose.orientation.y,
+                                                       current_pose_.pose.orientation.z).toRotationMatrix();
+  curr_trans_WO.topRightCorner<3,1>() = Eigen::Vector3d(current_pose_.pose.position.x,
+                                                     current_pose_.pose.position.y,
+                                                     current_pose_.pose.position.z);
+
   std::vector<geometry_msgs::PoseStamped> transformed_plan;
   if ( ! planner_util_.getLocalPlan(current_pose_, transformed_plan)) {
     ROS_ERROR("Could not get local plan");
@@ -105,24 +114,26 @@ bool CSPlannerROS::computeVelocityCommands(geometry_msgs::Twist& cmd_vel) {
       return false;
     }
 
-    geometry_msgs::PoseStamped moving_target;
-    const double target_distance = 0.2; // moving_target should be target_distance meters away from the robot.
+    geometry_msgs::PoseStamped moving_target_W;
+    const double target_distance = 0.2; // moving_target_W should be target_distance meters away from the robot.
     if (base_local_planner::getGoalPositionDistance(current_pose_, goal_pose.pose.position.x, goal_pose.pose.position.y) < 0.5) {
       target_ID = transformed_plan.size()-1;
-      moving_target = goal_pose;
+      moving_target_W = goal_pose;
     }
     while (target_ID < transformed_plan.size()-1) {
-        moving_target = transformed_plan.at(target_ID);
-        double distance = base_local_planner::getGoalPositionDistance(current_pose_, moving_target.pose.position.x, moving_target.pose.position.y);
+      moving_target_W = transformed_plan.at(target_ID);
+        double distance = base_local_planner::getGoalPositionDistance(current_pose_, moving_target_W.pose.position.x, moving_target_W.pose.position.y);
         ROS_DEBUG("Distance to moving target: %.2f.", distance);
         if (distance > target_distance)
             break;
         target_ID ++;
     }
-    pose_pub_.publish(moving_target);
+    pose_pub_.publish(moving_target_W);
+    Eigen::Vector4d moving_target_O = curr_trans_WO.inverse() * Eigen::Vector4d(moving_target_W.pose.position.x,
+        moving_target_W.pose.position.y, 0 ,1);
 
-    double curr_heading_to_goal_pos_W = std::atan2(moving_target.pose.position.y - current_pose_.pose.position.y,
-                                                   moving_target.pose.position.x - current_pose_.pose.position.x);
+    double curr_heading_to_goal_pos_W = std::atan2(moving_target_W.pose.position.y - current_pose_.pose.position.y,
+                                                   moving_target_W.pose.position.x - current_pose_.pose.position.x);
     double curr_heading_to_goal_pos_O = base_local_planner::getGoalOrientationAngleDifference(current_pose_,
                                                                                               curr_heading_to_goal_pos_W);
     ROS_DEBUG("Angle to goal: %.2f.", curr_heading_to_goal_pos_O);
@@ -133,13 +144,14 @@ bool CSPlannerROS::computeVelocityCommands(geometry_msgs::Twist& cmd_vel) {
     // If the robot is stationary, try rotate towards goal first.
     const double trans_vel = std::sqrt(std::pow(robot_vel.pose.position.x,2)+std::pow(robot_vel.pose.position.y,2));
     ROS_DEBUG("Translational velocity is: %.2f.", trans_vel);
-    if (trans_vel < 1e-3) {
+    if (trans_vel < 1e-3 || std::abs(curr_heading_to_goal_pos_O) > 0.5) {
       std::vector<geometry_msgs::PoseStamped> local_plan;
       std::vector<geometry_msgs::PoseStamped> transformed_plan;
       base_local_planner::publishPlan(transformed_plan, global_path_pub_);
       base_local_planner::publishPlan(local_plan, local_path_pub_);
 
       if (std::abs(curr_heading_to_goal_pos_O) > 0.1) {
+        cmd_vel.linear.x = 0;
         cmd_vel.angular.z = curr_heading_to_goal_pos_O > 0 ? 0.3 : -0.3;
         return true;
       }
@@ -147,11 +159,44 @@ bool CSPlannerROS::computeVelocityCommands(geometry_msgs::Twist& cmd_vel) {
 
     base_local_planner::publishPlan(transformed_plan, global_path_pub_);
 
-    const double forward_vel = 0.5;
+    nav_msgs::Path local_plan;
+    local_plan.header.stamp = ros::Time().now();
+    local_plan.header.frame_id = "odom";
+
+    const double forward_vel = 0.3;
     cmd_vel.linear.x = forward_vel;
     // P control on heading direction, with dead zone.
     const double kp = 1;
-    cmd_vel.angular.z = std::abs(curr_heading_to_goal_pos_O) < 0.1 ? 0 : kp * curr_heading_to_goal_pos_O;
+    if (std::abs(curr_heading_to_goal_pos_O) < 0.1) { // Angle error is small, just forward.
+      cmd_vel.angular.z = 0;
+      for (int i = 0; i < 100; i++) {
+        geometry_msgs::PoseStamped pose;
+        pose.header = local_plan.header;
+        pose.header.seq = i;
+        Eigen::Vector4d local_pos(0.01*i, 0,0,1);
+        Eigen::Vector4d global_pos = curr_trans_WO * local_pos;
+        pose.pose.position.x = global_pos(0);
+        pose.pose.position.y = global_pos(1);
+        local_plan.poses.push_back(pose);
+      }
+    } else { // Angle error is large, forward + rotate.
+
+      const double r = (std::pow(moving_target_O(0), 2)+std::pow(moving_target_O(1), 2))
+          /2/moving_target_O(1);
+      ROS_DEBUG("Moving target: x %.2f, y %.2f, r %.2f.", moving_target_O(0), moving_target_O(1), r);
+      cmd_vel.angular.z = forward_vel / r;
+      for (int i = 0; i < 100; i++) {
+        geometry_msgs::PoseStamped pose;
+        pose.header = local_plan.header;
+        pose.header.seq = i;
+        Eigen::Vector4d local_pos(std::abs(r * std::sin(i*M_PI/200)), r - r * std::cos(i*M_PI/200),0,1);
+        Eigen::Vector4d global_pos = curr_trans_WO * local_pos;
+        pose.pose.position.x = global_pos(0);
+        pose.pose.position.y = global_pos(1);
+        local_plan.poses.push_back(pose);
+      }
+    }
+    local_path_pub_.publish(local_plan);
   }
 
   return true;

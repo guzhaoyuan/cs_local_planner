@@ -12,7 +12,7 @@
 #include <base_local_planner/odometry_helper_ros.h>
 
 #include <tf2_ros/buffer.h>
-
+#include <Eigen/Dense>
 #include <dynamic_reconfigure/server.h>
 #include <cs_local_planner/CSPlannerConfig.h>
 #include "cs_planner.h"
