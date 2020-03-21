@@ -1,4 +1,5 @@
 # cs_local_planner
+
 This is a package containing a plugin for ROS navigation, serves as a local_planner that is inhereted from the `nav_core
 ::BaseLocalPlanner`. `cs_local_planner` means constant speed local planner.
 
@@ -13,10 +14,11 @@ When it reach the goal, it stop and perform a in-place-rotation again to align w
 
 ## TODO
 
+- [ ] Solve the overshooting and using forward looking to get best tracking performance.
 - [x] Track global path instead of global goal.
 - [ ] Add joy stick control feature.
 - [ ] Add speed and acceleration limits.
-- [ ] Solve the turning jiggering motion.
+- [x] Solve the turning jiggering motion.
 - [ ] Making sure the global path tracking is able to make steep turns.
 - [ ] Consider a global path planner using RRT as well as hand-specified waypoints.
 - [ ] Add example usage.

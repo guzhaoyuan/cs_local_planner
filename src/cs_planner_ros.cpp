@@ -106,7 +106,7 @@ bool CSPlannerROS::computeVelocityCommands(geometry_msgs::Twist& cmd_vel) {
     }
 
     geometry_msgs::PoseStamped moving_target;
-
+    const double target_distance = 0.2; // moving_target should be target_distance meters away from the robot.
     if (base_local_planner::getGoalPositionDistance(current_pose_, goal_pose.pose.position.x, goal_pose.pose.position.y) < 0.5) {
       target_ID = transformed_plan.size()-1;
       moving_target = goal_pose;
@@ -114,8 +114,8 @@ bool CSPlannerROS::computeVelocityCommands(geometry_msgs::Twist& cmd_vel) {
     while (target_ID < transformed_plan.size()-1) {
         moving_target = transformed_plan.at(target_ID);
         double distance = base_local_planner::getGoalPositionDistance(current_pose_, moving_target.pose.position.x, moving_target.pose.position.y);
-        ROS_INFO("Distance to moving target: %.2f.", distance);
-        if (distance > 0.2)
+        ROS_DEBUG("Distance to moving target: %.2f.", distance);
+        if (distance > target_distance)
             break;
         target_ID ++;
     }
@@ -129,8 +129,11 @@ bool CSPlannerROS::computeVelocityCommands(geometry_msgs::Twist& cmd_vel) {
 
     geometry_msgs::PoseStamped robot_vel;
     odom_helper_.getRobotVel(robot_vel);
+
     // If the robot is stationary, try rotate towards goal first.
-    if (std::sqrt(pow(robot_vel.pose.position.x,2)+pow(robot_vel.pose.position.y,2)) < 0.1) {
+    const double trans_vel = std::sqrt(std::pow(robot_vel.pose.position.x,2)+std::pow(robot_vel.pose.position.y,2));
+    ROS_DEBUG("Translational velocity is: %.2f.", trans_vel);
+    if (trans_vel < 1e-3) {
       std::vector<geometry_msgs::PoseStamped> local_plan;
       std::vector<geometry_msgs::PoseStamped> transformed_plan;
       base_local_planner::publishPlan(transformed_plan, global_path_pub_);
@@ -144,7 +147,8 @@ bool CSPlannerROS::computeVelocityCommands(geometry_msgs::Twist& cmd_vel) {
 
     base_local_planner::publishPlan(transformed_plan, global_path_pub_);
 
-    cmd_vel.linear.x = 0.5;
+    const double forward_vel = 0.5;
+    cmd_vel.linear.x = forward_vel;
     // P control on heading direction, with dead zone.
     const double kp = 1;
     cmd_vel.angular.z = std::abs(curr_heading_to_goal_pos_O) < 0.1 ? 0 : kp * curr_heading_to_goal_pos_O;
