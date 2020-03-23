@@ -16,6 +16,8 @@ When it reach the goal, it stop and perform a in-place-rotation again to align w
 
 - [x] Solve the overshooting and using forward looking to get best tracking performance.
 - [x] Track global path instead of global goal.
+- [x] Add move_base config for mat6 robot.
+- [ ] Add safety feature when the global plan directs to a obstacle, local planner should prevent this and stop.
 - [ ] Add joy stick control feature.
 - [ ] Add speed and acceleration limits.
 - [x] Solve the turning jiggering motion.
