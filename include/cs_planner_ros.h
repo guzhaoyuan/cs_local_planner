@@ -51,6 +51,7 @@ class CSPlannerROS : public nav_core::BaseLocalPlanner {
 
   base_local_planner::LatchedStopRotateController latchedStopRotateController_;
   base_local_planner::OdometryHelperRos odom_helper_;
+  std::string odom_frame_;
 
   CSPlanner* cp_;
 

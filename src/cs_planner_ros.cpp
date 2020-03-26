@@ -14,7 +14,7 @@ PLUGINLIB_EXPORT_CLASS(cs_local_planner::CSPlannerROS, nav_core::BaseLocalPlanne
 
 namespace cs_local_planner {
 
-CSPlannerROS::CSPlannerROS() : initialized_(false), odom_helper_("odom"), setup_(false) {
+CSPlannerROS::CSPlannerROS() : initialized_(false), odom_helper_("odom"), setup_(false), odom_frame_("odom") {
 }
 
 CSPlannerROS::~CSPlannerROS() {
@@ -52,6 +52,8 @@ void CSPlannerROS::reconfigureCB(CSPlannerConfig &config, uint32_t level) {
   limits.theta_stopped_vel = config.theta_stopped_vel;
 
   planner_util_.reconfigureCB(limits, config.restore_defaults);
+  odom_helper_.setOdomTopic(config.odom_frame);
+  odom_frame_ = config.odom_frame;
 
   // update dwa specific configuration
   cp_->reconfigure(config);
@@ -161,7 +163,7 @@ bool CSPlannerROS::computeVelocityCommands(geometry_msgs::Twist& cmd_vel) {
 
     nav_msgs::Path local_plan;
     local_plan.header.stamp = ros::Time().now();
-    local_plan.header.frame_id = "odom";
+    local_plan.header.frame_id = odom_frame_;
 
     const double forward_vel = 0.3;
     cmd_vel.linear.x = forward_vel;
@@ -214,8 +216,6 @@ void CSPlannerROS::initialize(std::string name, tf2_ros::Buffer* tf, costmap_2d:
     costmap_2d::Costmap2D* costmap = costmap_ros_->getCostmap();
 
     planner_util_.initialize(tf, costmap, costmap_ros_->getGlobalFrameID());
-
-    odom_helper_.setOdomTopic( "/odom" );
 
     server_ptr = new dynamic_reconfigure::Server<CSPlannerConfig>(private_nh);
     dynamic_reconfigure::Server<CSPlannerConfig>::CallbackType cb = boost::bind(&CSPlannerROS::reconfigureCB, this,
