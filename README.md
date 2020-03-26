@@ -8,9 +8,17 @@ The reason why I implement this planner is because the default DWA planner is so
   of the local trajectory, meaning that the robot could stop and adjust its yaw before moving on. This may take more
    time but has a better path tracking performance.
 
-The strategy is simple, when a global path comes, the robot start with an in-place-rotation to head towards the path
-. Then it keep a constant velocity moving in segments of straight lines to track the path. 
-When it reach the goal, it stop and perform a in-place-rotation again to align with the goal pose.
+The strategy is simple. When a global path comes, the robot start with an in-place-rotation to head towards the path
+. Then it keep a constant velocity to track the path. When it reaches the goal, it stops and performs a in-place
+-rotation to align with the goal pose.
+
+## Example
+
+A [demo](https://github.com/guzhaoyuan/autolabor_simulation/blob/master/simulation_launch/launch/local_planner.launch
+) of using cs_local_planner on a simulated differential drive car.
+
+![example](meta/cs_local_planner.png)
+
 
 ## TODO
 
@@ -22,6 +30,6 @@ When it reach the goal, it stop and perform a in-place-rotation again to align w
 - [ ] Add speed and acceleration limits.
 - [x] Remove the local prediction trajectory after goal reached.
 - [x] Solve the turning jiggering motion.
-- [ ] Making sure the global path tracking is able to make steep turns.
+- [x] Making sure the global path tracking is able to make steep turns.
 - [ ] Consider a global path planner using RRT as well as hand-specified waypoints.
-- [ ] Add example usage.
+- [x] Add example usage.
