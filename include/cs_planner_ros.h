@@ -33,6 +33,7 @@ class CSPlannerROS : public nav_core::BaseLocalPlanner {
  private:
   // Callback to update the local planner's parameters based on dynamic reconfigure.
   void reconfigureCB(CSPlannerConfig &config, uint32_t level);
+  void publishEmtpyPlan();
 
   bool initialized_;
 

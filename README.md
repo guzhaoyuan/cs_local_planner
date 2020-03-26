@@ -18,8 +18,9 @@ When it reach the goal, it stop and perform a in-place-rotation again to align w
 - [x] Track global path instead of global goal.
 - [x] Add move_base config for mat6 robot.
 - [ ] Add safety feature when the global plan directs to a obstacle, local planner should prevent this and stop.
-- [ ] Add joy stick control feature.
+- [x] Add joy stick control feature.
 - [ ] Add speed and acceleration limits.
+- [x] Remove the local prediction trajectory after goal reached.
 - [x] Solve the turning jiggering motion.
 - [ ] Making sure the global path tracking is able to make steep turns.
 - [ ] Consider a global path planner using RRT as well as hand-specified waypoints.

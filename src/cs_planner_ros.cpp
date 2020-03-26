@@ -89,12 +89,9 @@ bool CSPlannerROS::computeVelocityCommands(geometry_msgs::Twist& cmd_vel) {
   ROS_DEBUG_NAMED("cs_local_planner", "Received a transformed plan with %zu points.", transformed_plan.size());
 
   if (latchedStopRotateController_.isPositionReached(&planner_util_, current_pose_)) {
-    ROS_DEBUG("Position reached.");
+    ROS_DEBUG("Position reached, use latchedStopRotateController.");
     // Publish an empty plan because we've reached our goal position.
-    std::vector<geometry_msgs::PoseStamped> local_plan;
-    std::vector<geometry_msgs::PoseStamped> transformed_plan;
-    base_local_planner::publishPlan(transformed_plan, global_path_pub_);
-    base_local_planner::publishPlan(local_plan, local_path_pub_);
+    publishEmtpyPlan();
 
     base_local_planner::LocalPlannerLimits limits = planner_util_.getCurrentLimits();
 
@@ -146,11 +143,10 @@ bool CSPlannerROS::computeVelocityCommands(geometry_msgs::Twist& cmd_vel) {
     // If the robot is stationary, try rotate towards goal first.
     const double trans_vel = std::sqrt(std::pow(robot_vel.pose.position.x,2)+std::pow(robot_vel.pose.position.y,2));
     ROS_DEBUG("Translational velocity is: %.2f.", trans_vel);
+    // Only do forward+rotate when robot is moving and target angle is small.
+    // Otherwise, stop and perform in-place rotation.
     if (trans_vel < 1e-3 || std::abs(curr_heading_to_goal_pos_O) > 0.5) {
-      std::vector<geometry_msgs::PoseStamped> local_plan;
-      std::vector<geometry_msgs::PoseStamped> transformed_plan;
-      base_local_planner::publishPlan(transformed_plan, global_path_pub_);
-      base_local_planner::publishPlan(local_plan, local_path_pub_);
+      publishEmtpyPlan();
 
       if (std::abs(curr_heading_to_goal_pos_O) > 0.1) {
         cmd_vel.linear.x = 0;
@@ -240,6 +236,8 @@ bool CSPlannerROS::isGoalReached() {
 
   if (latchedStopRotateController_.isGoalReached(&planner_util_, odom_helper_, current_pose_)) {
     ROS_INFO("Goal reached");
+    std::vector<geometry_msgs::PoseStamped> local_plan;
+    base_local_planner::publishPlan(local_plan, local_path_pub_);
     return true;
   }
 
@@ -265,5 +263,16 @@ bool CSPlannerROS::setPlan(const std::vector< geometry_msgs::PoseStamped > &plan
 
   return false;
 }
+
+void CSPlannerROS::publishEmtpyPlan() {
+  nav_msgs::Path empty_plan;
+  empty_plan.header.frame_id = odom_frame_;
+  empty_plan.header.stamp = ros::Time().now();
+//  empty_plan.poses.emplace_back(); // Put
+  global_path_pub_.publish(empty_plan);
+  local_path_pub_.publish(empty_plan);
+
+}
+
 
 } // namespace cs_local_planner
