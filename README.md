@@ -27,7 +27,7 @@ A [demo](https://github.com/guzhaoyuan/autolabor_simulation/blob/master/simulati
 - [x] Add move_base config for mat6 robot.
 - [ ] Add safety feature when the global plan directs to a obstacle, local planner should prevent this and stop.
 - [x] Add joy stick control feature.
-- [ ] Add speed and acceleration limits.
+- [x] Add speed and acceleration limits.
 - [x] Remove the local prediction trajectory after goal reached.
 - [x] Solve the turning jiggering motion.
 - [x] Making sure the global path tracking is able to make steep turns.

@@ -57,6 +57,8 @@ class CSPlannerROS : public nav_core::BaseLocalPlanner {
   CSPlanner* cp_;
 
   int target_ID = 10;
+  double forward_vel;
+  double angular_vel;
 };
 
 } // namespace cs_local_planner

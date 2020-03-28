@@ -54,6 +54,8 @@ void CSPlannerROS::reconfigureCB(CSPlannerConfig &config, uint32_t level) {
   planner_util_.reconfigureCB(limits, config.restore_defaults);
   odom_helper_.setOdomTopic(config.odom_frame);
   odom_frame_ = config.odom_frame;
+  forward_vel = config.forward_vel;
+  angular_vel = config.angular_vel;
 
   // update dwa specific configuration
   cp_->reconfigure(config);
@@ -95,8 +97,6 @@ bool CSPlannerROS::computeVelocityCommands(geometry_msgs::Twist& cmd_vel) {
 
     base_local_planner::LocalPlannerLimits limits = planner_util_.getCurrentLimits();
 
-//    cmd_vel.angular.z = 0;
-//    return true;
     return latchedStopRotateController_.computeVelocityCommandsStopRotate(
         cmd_vel,
         limits.getAccLimits(),
@@ -121,11 +121,11 @@ bool CSPlannerROS::computeVelocityCommands(geometry_msgs::Twist& cmd_vel) {
     }
     while (target_ID < transformed_plan.size()-1) {
       moving_target_W = transformed_plan.at(target_ID);
-        double distance = base_local_planner::getGoalPositionDistance(current_pose_, moving_target_W.pose.position.x, moving_target_W.pose.position.y);
-        ROS_DEBUG("Distance to moving target: %.2f.", distance);
-        if (distance > target_distance)
-            break;
-        target_ID ++;
+      double distance = base_local_planner::getGoalPositionDistance(current_pose_, moving_target_W.pose.position.x, moving_target_W.pose.position.y);
+      ROS_DEBUG("Distance to moving target: %.2f.", distance);
+      if (distance > target_distance)
+          break;
+      target_ID ++;
     }
     pose_pub_.publish(moving_target_W);
     Eigen::Vector4d moving_target_O = curr_trans_WO.inverse() * Eigen::Vector4d(moving_target_W.pose.position.x,
@@ -150,7 +150,7 @@ bool CSPlannerROS::computeVelocityCommands(geometry_msgs::Twist& cmd_vel) {
 
       if (std::abs(curr_heading_to_goal_pos_O) > 0.1) {
         cmd_vel.linear.x = 0;
-        cmd_vel.angular.z = curr_heading_to_goal_pos_O > 0 ? 0.3 : -0.3;
+        cmd_vel.angular.z = curr_heading_to_goal_pos_O > 0 ? angular_vel : -angular_vel;
         return true;
       }
     }
@@ -161,10 +161,7 @@ bool CSPlannerROS::computeVelocityCommands(geometry_msgs::Twist& cmd_vel) {
     local_plan.header.stamp = ros::Time().now();
     local_plan.header.frame_id = odom_frame_;
 
-    const double forward_vel = 0.3;
     cmd_vel.linear.x = forward_vel;
-    // P control on heading direction, with dead zone.
-    const double kp = 1;
     if (std::abs(curr_heading_to_goal_pos_O) < 0.1) { // Angle error is small, just forward.
       cmd_vel.angular.z = 0;
       for (int i = 0; i < 100; i++) {
@@ -178,11 +175,10 @@ bool CSPlannerROS::computeVelocityCommands(geometry_msgs::Twist& cmd_vel) {
         local_plan.poses.push_back(pose);
       }
     } else { // Angle error is large, forward + rotate.
-
       const double r = (std::pow(moving_target_O(0), 2)+std::pow(moving_target_O(1), 2))
           /2/moving_target_O(1);
       ROS_DEBUG("Moving target: x %.2f, y %.2f, r %.2f.", moving_target_O(0), moving_target_O(1), r);
-      cmd_vel.angular.z = forward_vel / r;
+      cmd_vel.angular.z = std::max(std::min(forward_vel / r, angular_vel), -angular_vel);
       for (int i = 0; i < 100; i++) {
         geometry_msgs::PoseStamped pose;
         pose.header = local_plan.header;
@@ -268,7 +264,6 @@ void CSPlannerROS::publishEmtpyPlan() {
   nav_msgs::Path empty_plan;
   empty_plan.header.frame_id = odom_frame_;
   empty_plan.header.stamp = ros::Time().now();
-//  empty_plan.poses.emplace_back(); // Put
   global_path_pub_.publish(empty_plan);
   local_path_pub_.publish(empty_plan);
 
